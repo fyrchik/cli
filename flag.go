@@ -2,6 +2,8 @@ package cli
 
 import (
 	"strconv"
+	"strings"
+	"syscall"
 	"time"
 )
 
@@ -31,6 +33,11 @@ type Flag struct {
 
 	// Default is a default value for a flag.
 	Default interface{}
+
+	// EnvKey is the name of environment variable.
+	// It has more precendence than Default and less than parse result.
+	// EnvKey can specify multiple names delimited by comma ','.
+	EnvKey string
 
 	// Combine combines 2 values into 1 if multiple options
 	// for the same flag are presented.
@@ -96,6 +103,23 @@ func (f *Flag) SetValidate(v Validator) *Flag {
 func (f *Flag) SetPostValidate(v Validator) *Flag {
 	f.PostValidate = v
 	return f
+}
+
+// SetEnvKey sets f.EnvKey to s and returns f.
+func (f *Flag) SetEnvKey(s string) *Flag {
+	f.EnvKey = s
+	return f
+}
+
+func (f *Flag) getEnviron() (vals []string) {
+	for _, key := range strings.Split(f.EnvKey, ",") {
+		if val, ok := syscall.Getenv(strings.TrimSpace(key)); ok {
+			vals = append(vals, val)
+			continue
+		}
+
+	}
+	return
 }
 
 // StringFlag returns Flag which eats one argument and represents it as a string.

@@ -26,6 +26,7 @@ func TestFlag_Set(t *testing.T) {
 			return nil
 		}).
 		SetDefault(123).
+		SetEnvKey("ENV_FLAG").
 		SetParse(func(arg string) (interface{}, error) {
 			invoked[parse] = struct{}{}
 			return nil, nil
@@ -48,6 +49,8 @@ func TestFlag_Set(t *testing.T) {
 	g.Expect(invoked).To(HaveKey(combine))
 
 	g.Expect(f.Default).To(Equal(123))
+
+	g.Expect(f.EnvKey).To(Equal("ENV_FLAG"))
 
 	g.Expect(f.Parse).NotTo(BeNil())
 	f.Parse("")

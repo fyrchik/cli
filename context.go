@@ -29,7 +29,7 @@ func NewContext() *Context {
 func (c *Context) AddFlags(fs ...*Flag) error {
 	for _, f := range fs {
 		if _, ok := c.flags[f.Name]; ok {
-			return errors.Errorf("flag with name '%s' is already declared", f.Name)
+			return errors.Errorf("flag '%s' is already declared", f.Name)
 		}
 		c.flags[f.Name] = *f
 		for _, opt := range f.Options {
@@ -96,19 +96,48 @@ func (c *Context) Parse(args []string) (err error) {
 		c.Positional = args[ind:]
 	}
 
-	for name, val := range c.Named {
-		if f, ok := c.flags[name]; ok && f.PostValidate != nil {
-			if err = f.PostValidate(val); err != nil {
+	c.setDefaults()
+
+	for name, v = range c.Named {
+		if f, ok = c.flags[name]; ok && f.PostValidate != nil {
+			if err = f.PostValidate(v); err != nil {
 				return
 			}
 		}
 	}
+	return
+}
 
+func (c *Context) setDefaults() {
+	var (
+		err error
+		v   interface{}
+	)
+
+loop:
 	for name, f := range c.flags {
-		if _, ok := c.Named[name]; !ok && f.Default != nil {
-			c.Named[name] = f.Default
+		if _, ok := c.Named[name]; ok {
+			continue
+		}
+
+		vals := f.getEnviron()
+		if len(vals) == 0 {
+			if f.Default != nil {
+				c.Named[name] = f.Default
+			}
+			continue
+		}
+
+		if f.Parse == nil {
+			c.Named[name] = vals[0]
+			continue loop
+		}
+		for _, s := range vals {
+			if v, err = f.Parse(s); err != nil {
+				continue
+			}
+			c.Named[name] = v
+			continue loop
 		}
 	}
-
-	return
 }
