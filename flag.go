@@ -1,6 +1,9 @@
 package cli
 
-import "strconv"
+import (
+	"strconv"
+	"time"
+)
 
 // Combiner is a generic type for combining 2 values into 1.
 type Combiner func(interface{}, interface{}) interface{}
@@ -79,29 +82,26 @@ func (f *Flag) SetPostValidate(v Validator) *Flag {
 }
 
 // StringFlag returns Flag which eats one argument and represents it as a string.
-func StringFlag(name string, options ...string) Flag {
-	return Flag{Name: name, Options: options}
+func StringFlag(name string, options ...string) *Flag {
+	return &Flag{Name: name, Options: options}
 }
 
 // StringSliceFlag returns Flag which can be used multiple times
 // to accumulate strings in a slice.
-func StringSliceFlag(name string, options ...string) Flag {
-	return Flag{
-		Name:    name,
-		Options: options,
-		Parse: func(arg string) (interface{}, error) {
-			return []string{arg}, nil
-		},
-		Combine: func(a, b interface{}) interface{} {
-			return append(a.([]string), b.([]string)...)
-		},
-	}
+func StringSliceFlag(name string, options ...string) *Flag {
+	return StringFlag(name, options...).
+		SetCombine(func(a, b interface{}) interface{} {
+			if a == nil {
+				return []string{b.(string)}
+			}
+			return append(a.([]string), b.(string))
+		})
 }
 
 // BoolFlag returns Flag which needs no argument and
 // sets it's value to true if presented.
-func BoolFlag(name string, options ...string) Flag {
-	return Flag{
+func BoolFlag(name string, options ...string) *Flag {
+	return &Flag{
 		Name:      name,
 		Options:   options,
 		ParseMany: func(args []string) (interface{}, int, error) { return true, 0, nil },
@@ -110,8 +110,8 @@ func BoolFlag(name string, options ...string) Flag {
 
 // IntFlag returns Flag which parses it's argument to int64.
 // Note: for other numeric types one needs to define other flags.
-func IntFlag(name string, options ...string) Flag {
-	return Flag{
+func IntFlag(name string, options ...string) *Flag {
+	return &Flag{
 		Name:    name,
 		Options: options,
 		Parse: func(arg string) (interface{}, error) {
@@ -120,6 +120,18 @@ func IntFlag(name string, options ...string) Flag {
 				return nil, err
 			}
 			return i, nil
+		},
+	}
+}
+
+// DurationFlag parses time duration intervals.
+// Parsed value has type time.Duration
+func DurationFlag(name string, options ...string) *Flag {
+	return &Flag{
+		Name:    name,
+		Options: options,
+		Parse: func(arg string) (interface{}, error) {
+			return time.ParseDuration(arg)
 		},
 	}
 }

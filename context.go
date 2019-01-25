@@ -1,7 +1,11 @@
 package cli
 
-import "github.com/pkg/errors"
+import (
+	"github.com/pkg/errors"
+)
 
+// Context is container for flags and commands.
+// It will contain all parsed results.
 type Context struct {
 	Named      map[string]interface{}
 	Positional []string
@@ -9,6 +13,7 @@ type Context struct {
 	optMap     map[string]string
 }
 
+// NewContext returns new Context.
 func NewContext() *Context {
 	return &Context{
 		Named:      map[string]interface{}{},
@@ -19,19 +24,14 @@ func NewContext() *Context {
 	}
 }
 
-func (c *Context) clear() {
-	c.Named = map[string]interface{}{}
-	c.Positional = []string{}
-}
-
 // AddFlags adds flags to the Context.
 // TODO set default value for BoolFlags'
-func (c *Context) AddFlags(fs ...Flag) error {
+func (c *Context) AddFlags(fs ...*Flag) error {
 	for _, f := range fs {
 		if _, ok := c.flags[f.Name]; ok {
 			return errors.Errorf("flag with name '%s' is already declared", f.Name)
 		}
-		c.flags[f.Name] = f
+		c.flags[f.Name] = *f
 		for _, opt := range f.Options {
 			if _, ok := c.optMap[opt]; ok {
 				return errors.Errorf("flag for option '%s' is already declared", opt)
@@ -52,6 +52,9 @@ func (c *Context) Parse(args []string) (err error) {
 		ok     bool
 		f      Flag
 	)
+
+	c.Named = map[string]interface{}{}
+	c.Positional = []string{}
 
 	for ind < len(args) {
 		if name, ok = c.optMap[args[ind]]; !ok {
@@ -86,8 +89,8 @@ func (c *Context) Parse(args []string) (err error) {
 			}
 		}
 
-		if cur, ok := c.Named[name]; ok && f.Combine != nil {
-			v = f.Combine(cur, v)
+		if f.Combine != nil {
+			v = f.Combine(c.Named[name], v)
 		}
 		c.Named[name] = v
 	}
