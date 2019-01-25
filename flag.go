@@ -39,6 +39,7 @@ type Flag struct {
 	Parse Parser
 
 	// ParseMany eats many arguments at one time.
+	// If takes precedence over Parse.
 	// Note: be careful not to eat other flags.
 	ParseMany MultiParser
 
@@ -49,6 +50,13 @@ type Flag struct {
 	// Validate checks if flag's value is correct for every occurence of
 	// flag on command-line.
 	Validate Validator
+}
+
+// NewFlag returns new flag.
+// Note: you MUST provide Parse or ParseMany function
+// via SetParse/SetParseMany.
+func NewFlag(name string, options ...string) *Flag {
+	return &Flag{Name: name, Options: options}
 }
 
 // SetCombine sets f.Combiner to c and returns f.

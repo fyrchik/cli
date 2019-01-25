@@ -43,7 +43,7 @@ func TestContext_Parse(t *testing.T) {
 				}
 				return nil
 			}),
-		StringFlag("key-value", "-kv").
+		NewFlag("key-value", "-kv").
 			SetParseMany(func(args []string) (interface{}, int, error) {
 				if len(args) < 2 {
 					return nil, 0, errors.New("must have more than 2 arguments")
