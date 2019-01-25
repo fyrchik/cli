@@ -29,6 +29,9 @@ type Flag struct {
 	// Options are command-line options corresponding to the flag.
 	Options []string
 
+	// Default is a default value for a flag.
+	Default interface{}
+
 	// Combine combines 2 values into 1 if multiple options
 	// for the same flag are presented.
 	Combine Combiner
@@ -62,6 +65,12 @@ func NewFlag(name string, options ...string) *Flag {
 // SetCombine sets f.Combiner to c and returns f.
 func (f *Flag) SetCombine(c Combiner) *Flag {
 	f.Combine = c
+	return f
+}
+
+// SetDefault sets f.Default to v and returns f.
+func (f *Flag) SetDefault(v interface{}) *Flag {
+	f.Default = v
 	return f
 }
 
@@ -112,7 +121,19 @@ func BoolFlag(name string, options ...string) *Flag {
 	return &Flag{
 		Name:      name,
 		Options:   options,
-		ParseMany: func(args []string) (interface{}, int, error) { return true, 0, nil },
+		Default:   false,
+		ParseMany: Const(true),
+	}
+}
+
+// BoolFlagT is like BoolFlag but true by default and
+// can be set to false.
+func BoolFlagT(name string, options ...string) *Flag {
+	return &Flag{
+		Name:      name,
+		Options:   options,
+		Default:   true,
+		ParseMany: Const(false),
 	}
 }
 

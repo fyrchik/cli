@@ -25,6 +25,7 @@ func TestFlag_Set(t *testing.T) {
 			invoked[combine] = struct{}{}
 			return nil
 		}).
+		SetDefault(123).
 		SetParse(func(arg string) (interface{}, error) {
 			invoked[parse] = struct{}{}
 			return nil, nil
@@ -45,6 +46,8 @@ func TestFlag_Set(t *testing.T) {
 	g.Expect(f.Combine).NotTo(BeNil())
 	f.Combine(nil, nil)
 	g.Expect(invoked).To(HaveKey(combine))
+
+	g.Expect(f.Default).To(Equal(123))
 
 	g.Expect(f.Parse).NotTo(BeNil())
 	f.Parse("")

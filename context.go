@@ -68,14 +68,11 @@ func (c *Context) Parse(args []string) (err error) {
 				return
 			}
 		} else if ind < len(args) {
+			v, n = args[ind], 1
 			if f.Parse != nil {
-				// FIXME error if ind == len(args)
 				if v, err = f.Parse(args[ind]); err != nil {
 					return
 				}
-				n = 1
-			} else {
-				v, n = args[ind], 1
 			}
 		} else {
 			return errors.Errorf("expected argument for '%s'", args[ind-1])
@@ -104,6 +101,12 @@ func (c *Context) Parse(args []string) (err error) {
 			if err = f.PostValidate(val); err != nil {
 				return
 			}
+		}
+	}
+
+	for name, f := range c.flags {
+		if _, ok := c.Named[name]; !ok && f.Default != nil {
+			c.Named[name] = f.Default
 		}
 	}
 

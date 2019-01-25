@@ -29,10 +29,11 @@ func TestContext_Parse(t *testing.T) {
 	g.Expect(c.Positional).To(Equal([]string{"only", "positional"}))
 
 	err = c.AddFlags(
-		BoolFlag("bf", "-b", "--enable-some-sht"),
-		DurationFlag("duration", "-tl", "--time-length"),
+		BoolFlag("enable", "-e", "--enable"),
+		BoolFlagT("disable", "-d", "--disable"),
+		DurationFlag("duration", "-ti", "--time-interval"),
 		IntFlag("count", "--count"),
-		StringFlag("strf", "-s", "--test_flag"),
+		StringFlag("strFlag", "-s", "--test_flag"),
 		StringFlag("type", "-t", "--type").
 			SetValidate(OneOf("type1", "type2", "type3")),
 		StringSliceFlag("multi", "-m", "-ms", "--multi-string"),
@@ -61,7 +62,7 @@ func TestContext_Parse(t *testing.T) {
 	)
 	g.Expect(err).NotTo(HaveOccurred())
 
-	err = c.AddFlags(IntFlag("bf", "-i"))
+	err = c.AddFlags(IntFlag("enable", "-i"))
 	g.Expect(err).To(HaveOccurred())
 
 	err = c.AddFlags(IntFlag("time", "-t"))
@@ -69,34 +70,37 @@ func TestContext_Parse(t *testing.T) {
 
 	err = c.Parse([]string{"-s", "test_value"})
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(c.Named).To(HaveKeyWithValue("strf", "test_value"))
+	g.Expect(c.Named).To(HaveKeyWithValue("strFlag", "test_value"))
+	g.Expect(c.Named).To(HaveKeyWithValue("enable", false))
+	g.Expect(c.Named).To(HaveKeyWithValue("disable", true))
 
 	err = c.Parse([]string{"--test_flag"})
 	g.Expect(err).NotTo(BeNil())
 
 	err = c.Parse([]string{"--test_flag", "value", "--count", "123", "--test_flag", "value2"})
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(c.Named).To(HaveKeyWithValue("strf", "value2"))
+	g.Expect(c.Named).To(HaveKeyWithValue("strFlag", "value2"))
 	g.Expect(c.Named).To(HaveKeyWithValue("count", int64(123)))
 
 	err = c.Parse([]string{"--count", "12s"})
 	g.Expect(err).To(HaveOccurred())
 
-	err = c.Parse([]string{"-b"})
+	err = c.Parse([]string{"-e", "-d"})
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(c.Named).To(HaveKeyWithValue("bf", true))
+	g.Expect(c.Named).To(HaveKeyWithValue("enable", true))
+	g.Expect(c.Named).To(HaveKeyWithValue("disable", false))
 
-	err = c.Parse([]string{"-b", "-s", "123"})
+	err = c.Parse([]string{"-e", "-s", "123"})
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(c.Named).To(HaveKeyWithValue("bf", true))
-	g.Expect(c.Named).To(HaveKeyWithValue("strf", "123"))
+	g.Expect(c.Named).To(HaveKeyWithValue("enable", true))
+	g.Expect(c.Named).To(HaveKeyWithValue("strFlag", "123"))
 
 	err = c.Parse([]string{"-m", "first", "-s", "string", "--multi-string", "second", "-ms", "third"})
 	g.Expect(err).NotTo(HaveOccurred())
-	g.Expect(c.Named).To(HaveKeyWithValue("strf", "string"))
+	g.Expect(c.Named).To(HaveKeyWithValue("strFlag", "string"))
 	g.Expect(c.Named).To(HaveKeyWithValue("multi", []string{"first", "second", "third"}))
 
-	err = c.Parse([]string{"-tl", "2m2s"})
+	err = c.Parse([]string{"-ti", "2m2s"})
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(c.Named).To(HaveKeyWithValue("duration", time.Duration(122*time.Second)))
 
