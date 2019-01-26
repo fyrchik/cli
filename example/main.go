@@ -9,8 +9,8 @@ import (
 )
 
 func main() {
-	c := cli.NewContext()
-	err := c.AddFlags(
+	c := cli.NewContext(cli.Command{Name: "main"})
+	err := c.Root.AddFlags(
 		cli.StringFlag("name", "-n", "--name"),
 		cli.BoolFlag("confirm", "--yes-i-am-really-sure"),
 		cli.StringSliceFlag("multiple", "-m", "--multi"),

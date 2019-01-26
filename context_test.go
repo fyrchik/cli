@@ -19,17 +19,38 @@ func TestContext_Parse(t *testing.T) {
 	)
 
 	var (
-		c   *Context
-		err error
-		g   = NewGomegaWithT(t)
+		c                    *Context
+		createCmd, deleteCmd Command
+		err                  error
+		g                    = NewGomegaWithT(t)
 	)
 
-	c = NewContext()
+	createCmd = Command{Name: "create", Help: "create object"}
+	err = createCmd.AddFlags(
+		StringFlag("name", "-n", "--name"),
+		IntFlag("size", "-sz", "--size"),
+	)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	deleteCmd = Command{Name: "delete", Help: "delete object"}
+	err = deleteCmd.AddFlags(
+		StringFlag("name", "-n", "--name"),
+		BoolFlag("force", "-f", "--force"),
+	)
+	g.Expect(err).NotTo(HaveOccurred())
+
+	c = NewContext(Command{
+		Name: "test",
+		Subcommands: []Command{
+			createCmd,
+			deleteCmd,
+		},
+	})
 	err = c.Parse([]string{"only", "positional"})
 	g.Expect(err).NotTo(HaveOccurred())
 	g.Expect(c.Positional).To(Equal([]string{"only", "positional"}))
 
-	err = c.AddFlags(
+	err = c.Root.AddFlags(
 		BoolFlag("enable", "-e", "--enable"),
 		BoolFlagT("disable", "-d", "--disable"),
 		DurationFlag("duration", "-ti", "--time-interval"),
@@ -68,10 +89,10 @@ func TestContext_Parse(t *testing.T) {
 	err = c.Parse([]string{""})
 	g.Expect(err).NotTo(HaveOccurred())
 
-	err = c.AddFlags(IntFlag("enable", "-i"))
+	err = c.Root.AddFlags(IntFlag("enable", "-i"))
 	g.Expect(err).To(HaveOccurred())
 
-	err = c.AddFlags(IntFlag("time", "-t"))
+	err = c.Root.AddFlags(IntFlag("time", "-t"))
 	g.Expect(err).To(HaveOccurred())
 
 	err = c.Parse([]string{"-s", "test_value"})
@@ -81,7 +102,10 @@ func TestContext_Parse(t *testing.T) {
 	g.Expect(c.Named).To(HaveKeyWithValue("disable", true))
 
 	err = c.Parse([]string{"--test_flag"})
-	g.Expect(err).NotTo(BeNil())
+	g.Expect(err).To(HaveOccurred())
+
+	err = c.Parse([]string{"--unknown"})
+	g.Expect(err).To(HaveOccurred())
 
 	err = os.Setenv("ATTEMPTS_COUNT", "nan")
 	g.Expect(err).NotTo(HaveOccurred())
@@ -145,4 +169,18 @@ func TestContext_Parse(t *testing.T) {
 		"key-value", map[string]string{"mary": "girl", "jonnie": "boy"}),
 	)
 
+	err = c.Parse([]string{"create"})
+	g.Expect(err).NotTo(HaveOccurred())
+
+	err = c.Parse([]string{"--size", "10", "create"})
+	g.Expect(err).To(HaveOccurred())
+
+	err = c.Parse([]string{"--enable", "--", "--size", "10", "create"})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(c.Named).To(HaveKeyWithValue("enable", true))
+	g.Expect(c.Positional).To(Equal([]string{"--size", "10", "create"}))
+
+	err = c.Parse([]string{"create", "-n", "newobj"})
+	g.Expect(err).NotTo(HaveOccurred())
+	g.Expect(c.Named).To(HaveKeyWithValue("name", "newobj"))
 }

@@ -1,50 +1,40 @@
 package cli
 
 import (
+	"strings"
+
 	"github.com/pkg/errors"
 )
 
 // Context is container for flags and commands.
 // It will contain all parsed results.
 type Context struct {
+	Root       Command
 	Named      map[string]interface{}
 	Positional []string
-	flags      map[string]Flag
-	optMap     map[string]string
 }
 
 // NewContext returns new Context.
-func NewContext() *Context {
+func NewContext(root Command) *Context {
 	return &Context{
+		Root:       root,
 		Named:      map[string]interface{}{},
 		Positional: []string{},
-
-		flags:  map[string]Flag{},
-		optMap: map[string]string{},
 	}
-}
-
-// AddFlags adds flags to the Context.
-// TODO set default value for BoolFlags'
-func (c *Context) AddFlags(fs ...*Flag) error {
-	for _, f := range fs {
-		if _, ok := c.flags[f.Name]; ok {
-			return errors.Errorf("flag '%s' is already declared", f.Name)
-		}
-		c.flags[f.Name] = *f
-		for _, opt := range f.Options {
-			if _, ok := c.optMap[opt]; ok {
-				return errors.Errorf("flag for option '%s' is already declared", opt)
-			}
-			c.optMap[opt] = f.Name
-		}
-	}
-	return nil
 }
 
 // Parse parses command-line arguments. Results are stored
 // in c.Named for named options and in c.Positional for positional ones (unexpected, huh?)
 func (c *Context) Parse(args []string) (err error) {
+	c.Named = map[string]interface{}{}
+	c.Positional = []string{}
+
+	return c.parse(&c.Root, args)
+}
+
+// parse is auxilliary function which parses (sub-)Command arguments in
+// the Context c.
+func (c *Context) parse(cmd *Command, args []string) (err error) {
 	var (
 		v      interface{}
 		ind, n int
@@ -53,16 +43,29 @@ func (c *Context) Parse(args []string) (err error) {
 		f      Flag
 	)
 
-	c.Named = map[string]interface{}{}
-	c.Positional = []string{}
-
 	for ind < len(args) {
-		if name, ok = c.optMap[args[ind]]; !ok {
+		for i := range cmd.Subcommands {
+			if cmd.Subcommands[i].Name == args[ind] {
+				return c.parse(&cmd.Subcommands[i], args[ind+1:])
+			}
+		}
+
+		if strings.HasPrefix(args[ind], "-") {
+			if args[ind] == "--" {
+				ind++
+				break
+			}
+			if name, ok = cmd.optMap[args[ind]]; !ok {
+				return errors.Errorf("unknown option '%s'", args[ind])
+			}
+		}
+
+		if name, ok = cmd.optMap[args[ind]]; !ok {
 			break
 		}
 
 		ind++
-		f = c.flags[name]
+		f = cmd.flags[name]
 		if f.ParseMany != nil {
 			if v, n, err = f.ParseMany(args[ind:]); err != nil {
 				return
@@ -96,10 +99,10 @@ func (c *Context) Parse(args []string) (err error) {
 		c.Positional = args[ind:]
 	}
 
-	c.setDefaults()
+	c.setDefaults(cmd)
 
-	for name, v = range c.Named {
-		if f, ok = c.flags[name]; ok && f.PostValidate != nil {
+	for name, f := range cmd.flags {
+		if v, ok := c.Named[name]; ok && f.PostValidate != nil {
 			if err = f.PostValidate(v); err != nil {
 				return
 			}
@@ -108,14 +111,14 @@ func (c *Context) Parse(args []string) (err error) {
 	return
 }
 
-func (c *Context) setDefaults() {
+func (c *Context) setDefaults(cmd *Command) {
 	var (
 		err error
 		v   interface{}
 	)
 
 loop:
-	for name, f := range c.flags {
+	for name, f := range cmd.flags {
 		if _, ok := c.Named[name]; ok {
 			continue
 		}
